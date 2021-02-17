@@ -1,0 +1,15 @@
+Metadata-Version: 2.1
+Name: quantconnect
+Version: 0.1.0
+Summary: QuantConnect package reserved for future use
+Home-page: UNKNOWN
+Author: QuantConnect Corp.
+Author-email: support@quantconnect.com
+License: Apache 2.0
+Platform: UNKNOWN
+Classifier: License :: OSI Approved :: Apache Software License
+Requires-Python: >=3.6
+
+UNKNOWN
+
+
