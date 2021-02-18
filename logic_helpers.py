@@ -61,7 +61,9 @@ def screen_tickers(tickers_data_dict, number_years):
         month_ago_date = most_recent_data['Date'] - relativedelta(months=number_years)
         filtered_ticker_data = ticker_data.loc[ticker_data['Date'] >= month_ago_date]
         coefs = polynomial.polyfit(filtered_ticker_data['UTC'], filtered_ticker_data[f'SMA{200 * number_years}'], 1)
-        if coefs[1] < 0:
+        # Make sure SMA yields a positive gradient when fit with a first order polynomial.
+        # The most recent value must be greater than the oldest value.
+        if coefs[1] < 0 or current_sma200 < filtered_ticker_data[f'SMA{200 * number_years}'][0]:
             continue
 
         # 4) Is the current price at least 30% above the annual low?
