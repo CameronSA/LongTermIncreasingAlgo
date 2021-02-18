@@ -49,12 +49,12 @@ def screen_tickers(tickers_data_dict, number_years):
         current_sma150 = most_recent_data[f'SMA{150 * number_years}']
         current_sma200 = most_recent_data[f'SMA{200 * number_years}']
 
-        # 1) Is the current close price greater than the 150 & 200 SMAs?
-        if current_close < current_sma150 or current_close < current_sma200:
+        # 1) Is the current close price > the 50, 150 & 200 SMAs?
+        if current_close < current_sma50 or current_close < current_sma150 or current_close < current_sma200:
             continue
 
-        # 2) Is the 150 SMA greater than the 200 SMA?
-        if current_sma150 < current_sma200:
+        # 2) Is the 50 SMA > 150 SMA > 200 SMA?
+        if current_sma50 < current_sma150 or current_sma50 < current_sma200 or current_sma150 < current_sma200:
             continue
 
         # 3) Has the 200 SMA been trending up for at least 1 month?
@@ -64,19 +64,11 @@ def screen_tickers(tickers_data_dict, number_years):
         if coefs[1] < 0:
             continue
 
-        # 4) Is the 50 SMA greater than the 150 SMA and the 200 SMA?
-        if current_sma50 < current_sma150 or current_sma50 < current_sma200:
-            continue
-
-        # 5) Is the current price greater than the 50 SMA?
-        if current_close < current_sma50:
-            continue
-
-        # 6) Is the current price at least 30% above the annual low?
+        # 4) Is the current price at least 30% above the annual low?
         if current_close < min(ticker_data['Low'])*1.3:
             continue
 
-        # 7) Is the current price within 25% of the annual high?
+        # 5) Is the current price within 25% of the annual high?
         annual_high = max(ticker_data['High'])
         if current_close < annual_high*0.75 or current_close > annual_high*1.25:
             continue
