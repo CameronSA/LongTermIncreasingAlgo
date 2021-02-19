@@ -1,34 +1,50 @@
 from logic_helpers import *
 from datetime import timedelta
+from plotting import *
+
 
 # Gets a list of tickers for trading by comparing S&P500 tickers to the S&P500 index
 # and filtering based on 3 different SMAs.
 # Returns a list of tickers suitable for trading
-def get_tickers_for_trading(number_years):
+def get_tickers_for_trading(number_years, assumed_current_date, plot_results=False):
     print('Getting list of S&P500 tickers. . .')
     snp500_tickers = get_snp500_stock_tickers()
     print('Acquired list of tickers')
-    end_date = datetime.today()
+    end_date = assumed_current_date
     start_date = end_date - relativedelta(years=number_years)
 
     print(f'Screening ticker OHLC data over the last {number_years} years. . .')
     performant_tickers_data_dict = get_high_rs_rated_ticker_data(snp500_tickers, start_date, end_date)
-    screened_tickers = screen_tickers(performant_tickers_data_dict, number_years)
+    screened_tickers_data_dict = get_screened_tickers_data(performant_tickers_data_dict, number_years)
+
+    # Plot a subset for sanity checks:
+    if plot_results:
+        print("Plotting subset. . .")
+        i = 0
+        start_date_string = start_date.strftime('%Y-%m-%d')
+        end_date_string = end_date.strftime('%Y-%m-%d')
+        plot_ohlc_with_sma(f'snp500_price', f'S&P500: {start_date_string} - {end_date_string}',
+                           get_historical_data('^GSPC', start_date, end_date), number_years, is_snp=True)
+        for ticker, ticker_data in screened_tickers_data_dict.items():
+            if i % 10 == 0:
+                plot_ohlc_with_sma(f'subset_{i}', f'{ticker}: {start_date_string} - {end_date_string}', ticker_data, number_years)
+            i += 1
+
     print('Ticker OHLC data screening complete')
-    # for ticker in sorted(screened_tickers):
-    #     print(ticker)
-    print(f'total tickers: {len(snp500_tickers)}')
-    print(f'tickers outperforming S&P500: {len(performant_tickers_data_dict.keys())}')
-    print(f'shortlisted tickers for trading: {len(screened_tickers)}')
-    return screened_tickers
+    print(f'Total tickers: {len(snp500_tickers)}')
+    print(f'Tickers outperforming S&P500: {len(performant_tickers_data_dict.keys())}')
+    print(f'Shortlisted tickers for trading: {len(screened_tickers_data_dict.keys())}')
+    return screened_tickers_data_dict.keys()
 
 
 # The main function
 def main():
     start_time = time.time()
+    assumed_current_date = datetime.today()
+    number_years = 2
 
-    # Get list of tickers suitable for trading
-    tickers = get_tickers_for_trading(1)
+    # Get a list of tickers that are suitable for trading
+    tickers = get_tickers_for_trading(number_years, assumed_current_date, plot_results=True)
 
     # Calculate elapsed time
     end_time = time.time()

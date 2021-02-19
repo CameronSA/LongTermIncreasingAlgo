@@ -25,14 +25,14 @@ def get_snp500_stock_tickers():
     tickers = pd.read_csv('./Files/SNP500_listings_2020-11-22.csv')['Symbol']
     return set([item.replace(".", "-") for item in tickers])  # yfinance assumes '-' instead of '.' in tickers
 
+
 # Screens ticker OHLC data based on a set of SMA related conditions.
-# Returns a list of screened tickers
-def screen_tickers(tickers_data_dict, number_years):
-    screened_tickers = []
+# Returns a dictionary of screened tickers and their OHLC data
+def get_screened_tickers_data(tickers_data_dict, number_years):
+    screened_tickers_data_dict = {}
     print(f'Filtering ticker OHLC data based on the {number_years * 50}, {number_years * 150},'
           f' and {number_years * 200} day SMAs. . .')
-    time.sleep(0.01)
-    for ticker, ticker_data in tqdm(tickers_data_dict.items()):
+    for ticker, ticker_data in tickers_data_dict.items():
         # Calculate moving averages
         ticker_data[f'SMA{50 * number_years}'] = trend.sma_indicator(ticker_data['Close'], number_years * 50)
         ticker_data[f'SMA{150 * number_years}'] = trend.sma_indicator(ticker_data['Close'], number_years * 150)
@@ -76,11 +76,13 @@ def screen_tickers(tickers_data_dict, number_years):
             continue
 
         # If the above conditions are met, note the ticker
-        screened_tickers.append(ticker)
+        screened_tickers_data_dict[ticker] = ticker_data
 
-    return screened_tickers
+    return screened_tickers_data_dict
+
 
 # Selects the top x% performing tickers relative to the S&P500.
+# The top x% are then vetted to make sure they are all performing better than the S&P500.
 # Returns a dictionary of screened tickers and their OHLC data
 def get_high_rs_rated_ticker_data(tickers, start_date, end_date, performance_quantile = 30.):
     snp_data = get_historical_data('^GSPC', start_date, end_date)
@@ -104,6 +106,8 @@ def get_high_rs_rated_ticker_data(tickers, start_date, end_date, performance_qua
 
     print(f'Compiling OHLC for top {performance_quantile}% performing tickers relative to the S&P500. . .')
     rs_data = rs_data[rs_data['RS Rating'] >= rs_data['RS Rating'].quantile(1.-(performance_quantile/100.))]
+    rs_data = rs_data[rs_data['RS Rating'] >= 1.]
+
     screened_tickers_data_dict = {}
     for ticker in rs_data['Ticker']:
         screened_tickers_data_dict[ticker] = ticker_data_dict[ticker]
