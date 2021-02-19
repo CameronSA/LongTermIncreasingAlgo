@@ -94,12 +94,19 @@ def get_high_rs_rated_ticker_data(tickers, start_date, end_date, performance_qua
     print('Gathering ticker OHLC data and calculating RS ratings relative to the S&P500 index. . .')
     time.sleep(0.01)
     for ticker in tqdm(tickers):
-        ticker_data = get_historical_data(ticker, start_date, end_date)
-        ticker_data_dict[ticker] = ticker_data
-        ticker_data['Percent Change'] = ticker_data['Close'].pct_change()
-        ticker_return = (ticker_data['Percent Change'] + 1).cumprod()[-1]
-        relative_ticker_return = ticker_return/snp_return
-        returns.append((ticker, relative_ticker_return))
+        try:
+            ticker_data = get_historical_data(ticker, start_date, end_date)
+            if ticker_data.empty:
+                continue
+
+            ticker_data_dict[ticker] = ticker_data
+            ticker_data['Percent Change'] = ticker_data['Close'].pct_change()
+            ticker_return = (ticker_data['Percent Change'] + 1).cumprod()[-1]
+            relative_ticker_return = ticker_return/snp_return
+            returns.append((ticker, relative_ticker_return))
+        except Exception as error:
+            print(error)
+            continue
 
     rs_data = pd.DataFrame(returns, columns=['Ticker', 'Relative Return'])
     rs_data['RS Rating'] = rs_data['Relative Return'].rank(pct=True)*100.
