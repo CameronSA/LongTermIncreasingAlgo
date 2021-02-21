@@ -1,7 +1,7 @@
 from logic_helpers import *
 from datetime import timedelta
 from plotting import *
-
+from finance_management import FinanceManagement
 
 # Gets a list of tickers for trading by comparing S&P500 tickers to the S&P500 index
 # and filtering based on 3 different SMAs.
@@ -43,17 +43,28 @@ def get_tickers_for_trading(number_years, assumed_current_date, plot_results=Fal
     print(f'Shortlisted tickers for trading: {len(screened_tickers_data_dict.keys())}')
     return screened_tickers_data_dict.keys()
 
+def handle_ticker_orders(tickers):
+    financial_management = FinanceManagement()
+    owned_tickers = financial_management.get_owned_tickers()
+    tickers_to_buy = list(set(tickers) - set(owned_tickers))
+
+    for ticker in tickers_to_buy:
+        financial_management.buy_ticker(ticker)
 
 # The main function
 def main():
     start_time = time.time()
-    #assumed_current_date = datetime.today()
+    assumed_current_date = datetime.today()
     #assumed_current_date = datetime(day=23, month=3, year=2020)  # pandemic low
-    assumed_current_date = datetime(day=23, month=5, year=2020)
+    #assumed_current_date = datetime(day=23, month=5, year=2020)
     number_years = 1
 
+    tickers = ''
+    handle_ticker_orders(tickers)
+    return
     # Get a list of tickers that are suitable for trading
     tickers = get_tickers_for_trading(number_years, assumed_current_date, plot_results=True)
+
 
     # Calculate elapsed time
     end_time = time.time()

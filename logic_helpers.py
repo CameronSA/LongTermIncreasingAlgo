@@ -19,6 +19,7 @@ def get_historical_data(ticker, start_date, end_date, interval='1d'):
     tckr = yf.Ticker(ticker)
     return tckr.history(start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'), interval=interval)
 
+
 # Reads tickers from a file.
 # Returns a list of tickers
 def get_snp500_stock_tickers():
@@ -119,3 +120,4 @@ def get_high_rs_rated_ticker_data(tickers, start_date, end_date, performance_qua
     for ticker in rs_data['Ticker']:
         screened_tickers_data_dict[ticker] = ticker_data_dict[ticker]
     return screened_tickers_data_dict
+
