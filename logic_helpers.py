@@ -1,5 +1,4 @@
 import pandas as pd
-import yfinance as yf
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
@@ -13,18 +12,6 @@ def utc_time_difference(date_time):
     start = datetime(1970, 1, 1, 12, 0, 0, 0)
     elapsed_time = date_time - start
     return elapsed_time.total_seconds()
-
-# Returns OHLC data for the specified ticker over the specified date range
-def get_historical_data(ticker, start_date, end_date, interval='1d'):
-    tckr = yf.Ticker(ticker)
-    return tckr.history(start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'), interval=interval)
-
-
-# Reads tickers from a file.
-# Returns a list of tickers
-def get_snp500_stock_tickers():
-    tickers = pd.read_csv('./Files/SNP500_listings_2020-11-22.csv')['Symbol']
-    return set([item.replace(".", "-") for item in tickers])  # yfinance assumes '-' instead of '.' in tickers
 
 
 # Screens ticker OHLC data based on a set of SMA related conditions.
@@ -85,8 +72,8 @@ def get_screened_tickers_data(tickers_data_dict, number_years):
 # Selects the top x% performing tickers relative to the S&P500.
 # The top x% are then vetted to make sure they are all performing better than the S&P500.
 # Returns a dictionary of screened tickers and their OHLC data
-def get_high_rs_rated_ticker_data(tickers, start_date, end_date, performance_quantile = 30.):
-    snp_data = get_historical_data('^GSPC', start_date, end_date)
+def get_high_rs_rated_ticker_data(stock_data, tickers, start_date, end_date, performance_quantile=30.):
+    snp_data = stock_data.get_historical_data('^GSPC', start_date, end_date)
     snp_data['Percent Change'] = snp_data['Close'].pct_change()
     snp_return = (snp_data['Percent Change'] + 1).cumprod()[-1]
 
@@ -96,7 +83,7 @@ def get_high_rs_rated_ticker_data(tickers, start_date, end_date, performance_qua
     time.sleep(0.01)
     for ticker in tqdm(tickers):
         try:
-            ticker_data = get_historical_data(ticker, start_date, end_date)
+            ticker_data = stock_data.get_historical_data(ticker, start_date, end_date)
             if ticker_data.empty:
                 continue
 
