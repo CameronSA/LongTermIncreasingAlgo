@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 from tqdm import tqdm
 import pickle
+from dateutil.relativedelta import relativedelta
 
 class StockData:
     def __init__(self, backtest):
@@ -32,6 +33,7 @@ class StockData:
 
     # Returns OHLC data for the specified ticker over the specified date range
     def get_historical_data(self, ticker, start_date, end_date, interval='1d'):
+        end_date = end_date + relativedelta(days=1)
         if self.backtest:
             data = self.backtest_data[ticker]
             return data.loc[start_date.strftime('%Y-%m-%d'):end_date.strftime('%Y-%m-%d')]

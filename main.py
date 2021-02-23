@@ -47,15 +47,15 @@ def get_tickers_for_trading(stock_data, number_years, assumed_current_date, plot
 
 
 # Update stop losses on currently owned tickers, or sell if a stop loss has been hit
-def manage_owned_tickers(stock_data, financial_management , trailing_stop_loss_fraction):
+def manage_owned_tickers(stock_data, financial_management):
     print("Updating stop losses. . .")
     tickers = financial_management.get_owned_tickers()
     for ticker in tickers:
-        financial_management.update_stop_loss_or_sell(stock_data, ticker, trailing_stop_loss_fraction)
+        financial_management.update_stop_loss_or_sell(stock_data, ticker)
 
 
 # Handle ticker orders - buy the ones that require buying and apply initial stop losses
-def handle_ticker_orders(financial_management, tickers, initial_stop_loss_fraction):
+def handle_ticker_orders(financial_management, tickers):
     bank = financial_management.bank * 0.5
 
     # Find tickers that are not already owned
@@ -71,13 +71,13 @@ def handle_ticker_orders(financial_management, tickers, initial_stop_loss_fracti
         # Divide bank up by number of required investments, submit buy orders and stop losses
         investment_per_ticker = math.floor(bank*100.0/float(len(tickers_to_buy)))/100.0
         for ticker in tickers_to_buy:
-            financial_management.submit_buy_order(ticker, investment_per_ticker, initial_stop_loss_fraction)
+            financial_management.submit_buy_order(ticker, investment_per_ticker)
 
 
 # The main function
 def main():
     start_time = time.time()
-    assumed_current_date = datetime.today() - relativedelta(days=2)
+    assumed_current_date = datetime.today()
     #assumed_current_date = datetime(day=23, month=3, year=2020)  # pandemic low
     #assumed_current_date = datetime(day=23, month=5, year=2020)
     number_years = 1
@@ -85,21 +85,22 @@ def main():
     trailing_stop_loss_fraction = 0.8
 
     # Define stock data and financial management classes
-    stock_data = StockData(backtest=False)
-    # stock_data.generate_backtest_data(assumed_current_date - relativedelta(years=1), assumed_current_date)
-    # filepath = './Files/backtest_data.pkl'
-    # stock_data.save_backtest_data(filepath)
-    # stock_data.load_backtest_data(filepath)
-    financial_management = FinanceManagement(stock_data, assumed_current_date)
+    stock_data = StockData(backtest=True)
+    #stock_data.generate_backtest_data(assumed_current_date - relativedelta(years=10), assumed_current_date)
+    filepath = './Files/backtest_data.pkl'
+    #stock_data.save_backtest_data(filepath)
+    stock_data.load_backtest_data(filepath)
+    financial_management = FinanceManagement(stock_data, assumed_current_date,
+                                             initial_stop_loss_fraction, trailing_stop_loss_fraction)
 
     # Get a list of tickers that are suitable for trading
     tickers = get_tickers_for_trading(stock_data, number_years, assumed_current_date)
 
     # Manage owned tickers by updating stop losses or selling any stock that has hit the stop losses
-    manage_owned_tickers(stock_data, financial_management, trailing_stop_loss_fraction)
+    manage_owned_tickers(stock_data, financial_management)
 
     # Buy any tickers if required
-    handle_ticker_orders(financial_management, tickers, initial_stop_loss_fraction)
+    handle_ticker_orders(financial_management, tickers)
 
     # Save the amendments
     financial_management.save_investment_records()
@@ -113,3 +114,4 @@ def main():
 # Application entry point
 if __name__ == "__main__":
     main()
+
