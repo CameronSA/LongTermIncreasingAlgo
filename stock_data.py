@@ -3,6 +3,7 @@ import pandas as pd
 from tqdm import tqdm
 import pickle
 from dateutil.relativedelta import relativedelta
+import time
 
 class StockData:
     def __init__(self, backtest):
@@ -13,6 +14,7 @@ class StockData:
     def generate_backtest_data(self, start_date, end_date, interval='1d'):
         pd.set_option('mode.chained_assignment', None)
         print('Generating backtest data. . .')
+        time.sleep(0.01)
         tickers = self.get_snp500_stock_tickers()
         tickers.add('^GSPC')
         for ticker in tqdm(set(tickers)):
@@ -39,7 +41,12 @@ class StockData:
             return data.loc[start_date.strftime('%Y-%m-%d'):end_date.strftime('%Y-%m-%d')]
         else:
             tckr = yf.Ticker(ticker)
-            return tckr.history(start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'), interval=interval)
+            return tckr.history(start=start_date.strftime('%Y-%m-%d'),
+                                end=end_date.strftime('%Y-%m-%d'), interval=interval)
+
+    # Returns the most recent OHLC data for the specified ticker from the given date
+    def get_most_recent_data(self, ticker, date, interval='1d'):
+        return self.get_historical_data(ticker, date, date, interval)
 
     # Reads tickers from a file.
     # Returns a list of tickers

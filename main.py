@@ -4,6 +4,9 @@ from plotting import *
 from finance_management import FinanceManagement
 from stock_data import StockData
 import math
+from objects import *
+import traceback
+
 
 # Gets a list of tickers for trading by comparing S&P500 tickers to the S&P500 index
 # and filtering based on 3 different SMAs.
@@ -74,24 +77,19 @@ def handle_ticker_orders(financial_management, tickers):
             financial_management.submit_buy_order(ticker, investment_per_ticker)
 
 
-# The main function
-def main():
+# Runs the main algorithm.
+# assumed_current_date: The assumed current date
+# initial_stop_loss_fraction: The initial stop loss fraction
+# trailing_stop_loss_fraction: The trailing stop loss fraction
+# number_years: The number of years worth of OHLC data over which to perform the stock selection
+# stock_data: The stock data class. This abstracts away the API so fake data can be used
+# financial_management: The financial management class. This abstracts away
+# the buying/selling/stop losses so they can be simulated
+def run_algorithm(assumed_current_date, number_years, stock_data, financial_management):
+    assumed_current_date_string = assumed_current_date.strftime('%Y-%m-%d')
     start_time = time.time()
-    assumed_current_date = datetime.today()
-    #assumed_current_date = datetime(day=23, month=3, year=2020)  # pandemic low
-    #assumed_current_date = datetime(day=23, month=5, year=2020)
-    number_years = 1
-    initial_stop_loss_fraction = 0.9
-    trailing_stop_loss_fraction = 0.8
-
-    # Define stock data and financial management classes
-    stock_data = StockData(backtest=True)
-    #stock_data.generate_backtest_data(assumed_current_date - relativedelta(years=10), assumed_current_date)
-    filepath = './Files/backtest_data.pkl'
-    #stock_data.save_backtest_data(filepath)
-    stock_data.load_backtest_data(filepath)
-    financial_management = FinanceManagement(stock_data, assumed_current_date,
-                                             initial_stop_loss_fraction, trailing_stop_loss_fraction)
+    bank_open = financial_management.bank
+    owned_tickers_open, portfolio_value_open = financial_management.get_portfolio_value(stock_data)
 
     # Get a list of tickers that are suitable for trading
     tickers = get_tickers_for_trading(stock_data, number_years, assumed_current_date)
@@ -102,16 +100,89 @@ def main():
     # Buy any tickers if required
     handle_ticker_orders(financial_management, tickers)
 
-    # Save the amendments
-    financial_management.save_investment_records()
-
     # Calculate elapsed time
     end_time = time.time()
     elapsed_seconds = end_time - start_time
-    print(f'Time elapsed: {timedelta(seconds=elapsed_seconds)}')
+    owned_tickers_close, portfolio_value_close = financial_management.get_portfolio_value(stock_data)
+    results = AlgorithmResults(timedelta(seconds=elapsed_seconds),
+                               bank_open,
+                               financial_management.bank,
+                               portfolio_value_open,
+                               portfolio_value_close,
+                               owned_tickers_open,
+                               owned_tickers_close)
+
+    print(f'Time elapsed for {assumed_current_date_string}: {timedelta(seconds=elapsed_seconds)}')
+    return results
+
+
+# The backtesting function. Simulates running the algorithm over extended periods of time. Must allow at least a year
+def backtest(start_date, end_date, number_years, initial_stop_loss_fraction,
+             trailing_stop_loss_fraction, regenerate_data=True):
+
+    results_df_columns = ['bank_open', 'bank_close', 'portfolio_open', 'portfolio_close', 'held_tickers_open',
+                          'held_tickers_close', 'sold_tickers', 'equity_open', 'equity_close']
+    overall_results_df = pd.DataFrame(columns=results_df_columns)
+    start_time = time.time()
+
+    # Initialise stock data class
+    stock_data = StockData(backtest=True)
+    filepath = './Files/backtest_data.pkl'
+    if regenerate_data:
+        stock_data.generate_backtest_data(start_date, end_date)
+        stock_data.save_backtest_data(filepath)
+    stock_data.load_backtest_data(filepath)
+
+    try:
+        for i in range(int((end_date-(start_date + relativedelta(years=number_years))).days)):
+            assumed_current_date = start_date + relativedelta(years=number_years, days=i)
+            assumed_current_date_string = assumed_current_date.strftime('%y-%m-%d')
+            print(f"Started for date: {assumed_current_date_string}. . .")
+
+            # Don't run the algorithm beyond the generated data
+            if assumed_current_date > end_date:
+                break
+
+            # Initialise financial management class
+            financial_management = FinanceManagement(stock_data, assumed_current_date,
+                                                     initial_stop_loss_fraction, trailing_stop_loss_fraction)
+
+            # Run the algorithm
+            results = run_algorithm(assumed_current_date, number_years, stock_data, financial_management)
+
+            results_df = pd.DataFrame([[results.bank_open, results.bank_close, results.portfolio_value_open,
+                                        results.portfolio_value_close, results.owned_tickers_open,
+                                        results.owned_tickers_close, results.sold_tickers, results.equity_open,
+                                        results.equity_close]], columns=results_df_columns)
+
+            # Log the results
+            overall_results_df = overall_results_df.append(results_df)
+
+            # Save the trade records
+            financial_management.save_investment_records()
+            print()
+    except Exception as e:
+        traceback.print_exc()
+        print(f"ERROR encountered: {e}")
+        print("Saving last known results before exception. . .")
+
+    # Save the results
+    start_date_string = start_date.strftime('%Y-%m-%d')
+    end_date_string = end_date.strftime('%Y-%m-%d')
+    filepath = f'./Files/backtesting_results_{start_date_string}_to_{end_date_string}.csv'
+    overall_results_df.to_csv(filepath, index=False)
+    end_time = time.time()
+    time_elapsed = timedelta(seconds=(end_time - start_time))
+    print(f"Backtesting complete. Time elapsed: {time_elapsed}")
 
 
 # Application entry point
 if __name__ == "__main__":
-    main()
+    #run_algorithm()
+    backtest(start_date=datetime.today()-relativedelta(years=2),
+             end_date=datetime.today(),
+             number_years=1,
+             initial_stop_loss_fraction=0.9,
+             trailing_stop_loss_fraction=0.8,
+             regenerate_data=False)
 

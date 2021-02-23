@@ -41,12 +41,11 @@ class FinanceManagement:
             for index, row in self.investment_records.iterrows():
                 # Complete buy orders
                 if datetime.strptime(row['Date'], "%Y-%m-%d") < self.current_date:
-                    recent_data = stock_data.get_historical_data(row['Ticker'],
-                                                                 self.current_date-relativedelta(days=1),
+                    recent_data = stock_data.get_historical_data(row['Ticker'], self.current_date-relativedelta(days=3),
                                                                  self.current_date)
                     if row['Status'] == "Buy_Order":
-                        ticker_price = float(recent_data.iloc[-1]['Close'])
                         if not recent_data.empty:
+                            ticker_price = float(recent_data.iloc[-1]['Close'])
                             buy_price = math.floor(float(row['Buy_Price'])*100.0)/100.0
                             self.investment_records.loc[index, 'Buy_Amount'] = buy_price/ticker_price
                             self.investment_records.loc[index, 'Individual_Buy_Price'] = math.floor(100.0*ticker_price)/100.0
@@ -63,8 +62,8 @@ class FinanceManagement:
                             self.bank_log = self.bank_log.append(bank_record)
                     # Complete sell orders
                     if row['Status'] == "Sell_Order":
-                        ticker_price = float(recent_data.iloc[-1]['Open'])
                         if not recent_data.empty:
+                            ticker_price = float(recent_data.iloc[-1]['Open'])
                             sell_price = math.floor(100.0*float(row['Buy_Amount'])*ticker_price)/100.0
                             self.bank = math.floor(100.0*(self.bank + sell_price - (sell_price*self.broker_fee_fraction)))/100.0
                             bank_record = pd.DataFrame([[self.current_date.strftime('%Y-%m-%d'),
@@ -109,8 +108,7 @@ class FinanceManagement:
             if row['Ticker'] == ticker and row['Status'] == 'Owned':
                 stop_loss = float(row['Stop_Loss'])
                 # Yesterday's closing price
-                recent_data = stock_data.get_historical_data(row['Ticker'],
-                                                             self.current_date - relativedelta(days=1),
+                recent_data = stock_data.get_historical_data(row['Ticker'], self.current_date - relativedelta(days=1),
                                                              self.current_date)
                 ticker_price = float(recent_data.iloc[-1]['Close'])
                 if not recent_data.empty:
@@ -127,5 +125,20 @@ class FinanceManagement:
         with open(self.__bank_filename, 'w') as file:
             file.write(str(self.bank))
         self.bank_log.to_csv(self.__bank_log_filename, index=False)
+        print('Investment records saved')
+
+    # Gets the portfolio value.
+    # Returns the number of tickers owned and the total value of stock held
+    def get_portfolio_value(self, stock_data):
+        held_df = self.investment_records[self.investment_records["Status"] == "Owned"].copy()
+        held_df['Stock_Value'] = -1
+
+        for index, row in held_df.iterrows():
+            stock_value = float(stock_data.get_historical_data(row['Ticker'], self.current_date - relativedelta(days=3),
+                                                               self.current_date).iloc[-1]['Close'])*row['Buy_Amount']
+            held_df.loc[index, 'Stock_Value'] = stock_value
+
+        portfolio_value = sum(held_df['Stock_Value'])
+        return len(held_df), portfolio_value
 
 
